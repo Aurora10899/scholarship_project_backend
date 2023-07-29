@@ -10,6 +10,10 @@ const MONGODB_URL = "mongodb://127.0.0.1:27017/scholarshipDB";
 
 mongoose.connect(MONGODB_URL, { useNewUrlParser: true, useUnifiedTopology: true}).then( () => console.log("Connection Successfull")).catch( (err) => console.log(err));
 
+app.use(cors());
+app.use(bodyParser.json());
+
+//declaring the national schema
 const NationalSchema = new mongoose.Schema({
   title: { type: String, required: true },
   gender: { type: String, required: true },
@@ -21,20 +25,28 @@ const NationalSchema = new mongoose.Schema({
   website: { type: String, required: true}
 });
 
+//declaring the international schema
 const InternationalSchema = new mongoose.Schema({
   ititle: { type: String, required: true },
   icountry: { type: String, required: true },
   ieducationLvl: [String],
   idescription: { type: String, required: true },
   iwebsite: { type: String, required: true },
-})
+});
+
+//declaring the message schema
+const messageSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  message: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+});
 
 const National = mongoose.model("National", NationalSchema);
 const International = mongoose.model("International", InternationalSchema);
+const Message = mongoose.model('Message', messageSchema);
 
-app.use(cors());
-app.use(bodyParser.json());
-
+//filter the national collection and sends back the data
 app.get("/api/nationals", async (req, res) =>{
   const { query, gender, fieldOfStudy, educationLvl, caste, pwd} = req.query;
 
@@ -56,7 +68,6 @@ app.get("/api/nationals", async (req, res) =>{
     filterObject.caste = { $in: caste};
   }
   if(pwd) {
-    console.log(filterObject.pwd);
     filterObject.pwd = { $regex: new RegExp(pwd, 'i')}
   }
 
@@ -70,6 +81,7 @@ app.get("/api/nationals", async (req, res) =>{
 
 });
 
+//filter the international collection and sends back the data
 app.get("/api/internationals", async (req, res) =>{
   const { iquery, icountry, ieducationLvl} = req.query;
   const filterObject = {};
@@ -94,6 +106,21 @@ app.get("/api/internationals", async (req, res) =>{
 
 });
 
+//saves the message to the database and sends a message
+app.post('/api/messages', async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
+    const newMessage = new Message({ name, email, message });
+    await newMessage.save();
+
+    res.status(201).json({ message: 'Message successfully saved!' });
+  } catch (err) {
+    console.error('Error saving message:', err);
+    res.status(500).json({ error: 'Failed to save message' });
+  }
+});
+
+//listen the request from the frontend
 app.listen(PORT, () =>{
   console.log(`Server is running on http://localhost:${PORT}`);
 });
